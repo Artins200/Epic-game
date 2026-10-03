@@ -85,7 +85,7 @@ export class Enemy {
     this.maxHp = this.type === 'heavy' ? 170 : this.type === 'fanatic' ? 120 : 100;
     this.hp = this.maxHp;
     this.speed = this.type === 'heavy' ? 3.1 : this.type === 'fanatic' ? 5.4 : 4.2;
-    this.fireInterval = this.type === 'heavy' ? 1.5 : this.type === 'fanatic' ? 0.55 : 0.95;
+    this.fireInterval = this.type === 'heavy' ? 1.5 : this.type === 'fanatic' ? 0.75 : 0.95;
     this.dmg = this.type === 'heavy' ? 16 : 8;
     this.range = this.type === 'heavy' ? 26 : 44;
     this.accuracy = this.type === 'heavy' ? 0.5 : this.type === 'fanatic' ? 0.42 : 0.3;
@@ -182,26 +182,33 @@ export class Enemy {
   // ---------------- движение ----------------
   _move(dt, dir, speed) {
     if (dir.lengthSq() < 1e-6) return;
-    dir.normalize();
-    const target = dir.multiplyScalar(speed);
+    const wish = dir.clone().normalize();          // важно: dir дальше не портим
+    const target = wish.clone().multiplyScalar(speed);
     this.vel.lerp(target, 1 - Math.pow(0.001, dt));
     const before = this.pos.clone();
     const next = this.pos.clone().addScaledVector(this.vel, dt);
     this.game.resolveCollision(next, 0.42, 1.8);
     next.y = this.game.groundHeight(next.x, next.z, this.pos.y);
     this.pos.copy(next);
-    // если уперлись в стену — пробуем обойти
+    // если уперлись в стену — выбираем обход, который ближе к цели
     const moved = this.pos.distanceTo(before);
     this._stuck = moved < speed * dt * 0.35 ? (this._stuck || 0) + dt : 0;
-    if (this._stuck > 0.55) {
-      this._avoid = new THREE.Vector3(-dir.z, 0, dir.x).multiplyScalar(this._avoidSide || 1);
-      this._avoidT = 0.9;
-      this._avoidSide = -(this._avoidSide || 1);
+    if (this._stuck > 0.4) {
+      const left = new THREE.Vector3(-wish.z, 0, wish.x);
+      const goal = this._goal || this.pos;
+      const reach = v => {
+        const p = this.pos.clone().addScaledVector(v, 3).addScaledVector(wish, 1.2);
+        this.game.resolveCollision(p, 0.42, 1.8);
+        return p.distanceTo(goal);
+      };
+      this._avoid = reach(left) <= reach(left.clone().negate()) ? left : left.negate();
+      this._avoidT = 1.5;
       this._stuck = 0;
     }
     if (this._avoidT > 0) {
       this._avoidT -= dt;
-      const alt = this.pos.clone().addScaledVector(this._avoid, dt * speed);
+      const slide = this._avoid.clone().multiplyScalar(0.9).addScaledVector(wish, 0.45).normalize();
+      const alt = this.pos.clone().addScaledVector(slide, dt * speed);
       this.game.resolveCollision(alt, 0.42, 1.8);
       alt.y = this.game.groundHeight(alt.x, alt.z, this.pos.y);
       this.pos.copy(alt);
@@ -244,11 +251,34 @@ export class Enemy {
     const toPlayer = new THREE.Vector3().subVectors(T.pos, this.pos);
     toPlayer.y = 0;
     const dist = toPlayer.length();
+    this._goal = T.pos;
+
+    // обход по узлам, если цели не видно (подвал)
+    const sees = g.losClear(this.pos, T.pos);
+    if (g.nav && !sees && (this.state === ST.ADVANCE || this.state === ST.ATTACK)) {
+      this._navT = (this._navT || 0) - dt;
+      const goalNode = g.nearestNode(T.pos);
+      if (this._navT <= 0 || this._navGoal !== goalNode) {
+        this._navT = 1.0;
+        this._navGoal = goalNode;
+        this._navPath = g.navPath(this.pos, T.pos);
+        this._navI = 0;
+      }
+      const path = this._navPath;
+      if (path && path.length) {
+        while (this._navI < path.length - 1 &&
+               this.pos.distanceTo(g.nav.nodes[path[this._navI]]) < 1.4) this._navI++;
+        const wp = g.nav.nodes[path[this._navI]];
+        this._steer = new THREE.Vector3(wp.x - this.pos.x, 0, wp.z - this.pos.z);
+      }
+    } else {
+      this._steer = null;
+    }
 
     // --- поведение по состояниям ---
     switch (this.state) {
       case ST.ADVANCE: {
-        this._move(dt, toPlayer, this.speed);
+        this._move(dt, this._steer || toPlayer, this.speed);
         if (dist < this.range && this.stateT > 0.5) this.setState(ST.ATTACK);
         this.facing = Math.atan2(toPlayer.x, toPlayer.z);
         break;
@@ -258,9 +288,14 @@ export class Enemy {
         if (this.strafeT <= 0) { this.strafeT = 1.2 + Math.random() * 1.6; if (Math.random() < .4) this.strafe *= -1; }
         const side = new THREE.Vector3(-toPlayer.z, 0, toPlayer.x).normalize();
         const move = new THREE.Vector3();
-        if (dist > this.range * 0.8) move.addScaledVector(toPlayer, 1);
-        else if (dist < this.range * 0.35) move.addScaledVector(toPlayer, -1);
-        move.addScaledVector(side, this.strafe * 0.8);
+        if (this._steer) {
+          // цели не видно — идём по маршруту, пока не появится линия огня
+          move.addScaledVector(this._steer, 1);
+        } else {
+          if (dist > this.range * 0.8) move.addScaledVector(toPlayer, 1);
+          else if (dist < this.range * 0.35) move.addScaledVector(toPlayer, -1);
+          move.addScaledVector(side, this.strafe * 0.8);
+        }
         this._move(dt, move, this.speed * 0.75);
         this.facing = Math.atan2(toPlayer.x, toPlayer.z);
         this.fireCd -= dt;
@@ -333,21 +368,26 @@ export class Enemy {
     const g = this.game;
     const muzzle = new THREE.Vector3();
     this.parts.muzzle.getWorldPosition(muzzle);
-    const aim = target.pos.clone(); aim.y += 1.15;
-    // разброс
-    const miss = (1 - this.accuracy * (1 - Math.min(1, dist / 70))) * 2.2;
-    aim.x += (Math.random() - 0.5) * miss * 2.4;
-    aim.y += (Math.random() - 0.5) * miss * 1.6;
-    aim.z += (Math.random() - 0.5) * miss * 2.4;
-    g.effects.tracer(muzzle, aim, 0xff8a4a);
+    const aimPoint = target.pos.clone(); aimPoint.y += 1.15;
+    // шанс попадания падает с дистанцией
+    const falloff = 1 - Math.min(1, dist / (this.range * 1.4));
+    const chance = Math.min(0.7, this.accuracy * (0.18 + 0.45 * falloff));
+    const hit = Math.random() < chance;
+    const aim = aimPoint.clone();
+    if (!hit) {
+      const spread = 0.8 + dist * 0.05;
+      aim.x += (Math.random() - 0.5) * spread * 2;
+      aim.y += (Math.random() - 0.5) * spread * 1.2;
+      aim.z += (Math.random() - 0.5) * spread * 2;
+    }
+    g.effects.tracer(muzzle, aim, this.isAlly ? 0x8affc0 : 0xff8a4a);
     g.effects.muzzleFlash(muzzle, aim.clone().sub(muzzle).normalize());
     g.audio.enemyShot(dist);
 
-    const hitDist = aim.distanceTo(target.pos.clone().setY(target.pos.y + 1.2));
-    if (hitDist < 0.9) {
+    if (hit) {
       if (this.isAlly) target.damage(this.dmg * (0.7 + Math.random() * 0.6), 'body');
       else g.damagePlayer(this.dmg * (0.7 + Math.random() * 0.6), this);
-    } else if (Math.random() < 0.4) {
+    } else if (Math.random() < 0.5) {
       g.effects.impact(aim, 'metal');
     }
   }

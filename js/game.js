@@ -141,6 +141,11 @@ export class Game {
   }
 
   // ================== порталы ==================
+  faceTowards(tx, tz) {
+    const dx = tx - this.player.pos.x, dz = tz - this.player.pos.z;
+    return Math.atan2(-dx, -dz);
+  }
+
   _portalMesh(color) {
     const g = new THREE.Group();
     const ring = new THREE.Mesh(new THREE.TorusGeometry(1.5, 0.13, 8, 28),
@@ -207,11 +212,12 @@ export class Game {
       this.player.bodyParts.legL.rotation.x = 0;
       this.player.bodyParts.legR.rotation.x = 0;
       this.player.pos.set(50, 0, -22);
-      this.player.yaw = Math.atan2(50, 22);
+      this.player.yaw = this.faceTowards(0, 0);   // смотрим на штаб
       this.player.pitch = -0.05;
       this.player.hp = 100;
       this.scene = this.base.scene;
       this.colliders = this.base.colliders;
+      this.nav = null;
       this.effects.clear();
       this._addWeaponCrate();
       this._addConsoleInteraction();
@@ -508,7 +514,7 @@ export class Game {
       else if (role === 'beg') { e.setState(ST.BEG); }
       else {
         e.type = 'fanatic';
-        e.speed = 5.4; e.fireInterval = 0.5; e.range = 48; e.accuracy = 0.44; e.dmg = 11;
+        e.speed = 5.4; e.fireInterval = 0.7; e.range = 48; e.accuracy = 0.44; e.dmg = 11;
         e.mesh.userData.parts.head.material.color.set(0x8c2f26);
         e.setState(ST.ATTACK);
       }
@@ -673,7 +679,7 @@ export class Game {
     this.rig.detach();
     setTimeout(() => {
       this.player.pos.set(this.base.lz.x + 2, 0, this.base.lz.z + 7);
-      this.player.yaw = Math.PI;
+      this.player.yaw = this.faceTowards(0, 0);   // смотрим на штаб
       this.ui.fade(false, 800);
       this.ui.chapter('ГЛАВА 3', 'ПОДВАЛ');
       this.hatchPortal.visible = true;
@@ -706,13 +712,14 @@ export class Game {
       this.enemies.length = 0;
       this.interactables = this.interactables.filter(i => i.scene === 'basement');
       this.player.pos.copy(this.basement.spawn);
-      this.player.yaw = Math.PI;
+      this.player.yaw = this.faceTowards(this.basement.spawn.x, -20);   // вглубь подвала
       this.player.pitch = 0;
       this.player.vel.set(0, 0, 0);
       this.player.heal(60);
       this.player.addAmmo(120);
       this.mode = 'basement';
       this.waveState = 'idle';
+      this.buildNav(this.basement.navNodes);
       this._addTechPickups();
       this.ui.fade(false, 900);
       this.ui.banner('ГЛАВА 3', 'подвал штаба', '', 3.2);
@@ -960,6 +967,82 @@ export class Game {
       if (d < bd) { bd = d; best = p; }
     }
     return best;
+  }
+
+  // ---------------- навигация по узлам (для подвала) ----------------
+  pointFree(x, z, y, r) {
+    for (const c of this.colliders) {
+      if (c.max.y < y + 0.25 || c.min.y > y + 1.7) continue;
+      if (x > c.min.x - r && x < c.max.x + r && z > c.min.z - r && z < c.max.z + r) return false;
+    }
+    return true;
+  }
+
+  segmentClear(a, b, r = 0.85) {
+    const d = Math.hypot(b.x - a.x, b.z - a.z);
+    const n = Math.max(2, Math.ceil(d / 0.45));
+    for (let i = 0; i <= n; i++) {
+      const t = i / n;
+      if (!this.pointFree(a.x + (b.x - a.x) * t, a.z + (b.z - a.z) * t, a.y + (b.y - a.y) * t, r)) return false;
+    }
+    return true;
+  }
+
+  buildNav(nodes) {
+    const adj = nodes.map(() => []);
+    for (let i = 0; i < nodes.length; i++) {
+      for (let j = i + 1; j < nodes.length; j++) {
+        const d = nodes[i].distanceTo(nodes[j]);
+        if (d > 24) continue;
+        if (this.segmentClear(nodes[i], nodes[j])) { adj[i].push([j, d]); adj[j].push([i, d]); }
+      }
+    }
+    // контроль связности: ИИ не должен получать островки
+    const seen = new Set([0]), stack = [0];
+    while (stack.length) {
+      const u = stack.pop();
+      for (const [v] of adj[u]) if (!seen.has(v)) { seen.add(v); stack.push(v); }
+    }
+    if (seen.size !== nodes.length) {
+      console.warn('Навигация: недостижимые узлы', nodes.map((n, i) => [n, i])
+        .filter(([, i]) => !seen.has(i)).map(([n, i]) => `${i}:(${n.x},${n.y},${n.z})`).join(' '));
+    }
+    this.nav = { nodes, adj };
+    return this.nav;
+  }
+
+  nearestNode(pos) {
+    let best = 0, bd = Infinity;
+    this.nav.nodes.forEach((n, i) => {
+      const d = (n.x - pos.x) ** 2 + (n.z - pos.z) ** 2 + (n.y - pos.y) ** 2;
+      if (d < bd) { bd = d; best = i; }
+    });
+    return best;
+  }
+
+  navPath(from, to) {
+    const { nodes, adj } = this.nav;
+    const a = this.nearestNode(from), b = this.nearestNode(to);
+    if (a === b) return [];
+    const dist = new Array(nodes.length).fill(Infinity);
+    const prev = new Array(nodes.length).fill(-1);
+    const seen = new Array(nodes.length).fill(false);
+    dist[a] = 0;
+    for (let k = 0; k < nodes.length; k++) {
+      let u = -1, bu = Infinity;
+      for (let i = 0; i < nodes.length; i++) if (!seen[i] && dist[i] < bu) { bu = dist[i]; u = i; }
+      if (u < 0) break;
+      if (u === b) break;
+      seen[u] = true;
+      for (const [v, w] of adj[u]) {
+        if (dist[u] + w < dist[v]) { dist[v] = dist[u] + w; prev[v] = u; }
+      }
+    }
+    if (dist[b] === Infinity) return [];
+    const path = [];
+    for (let v = b; v !== -1; v = prev[v]) path.push(v);
+    path.reverse();
+    return path.slice(1);
   }
 
   nearestEnemy(pos) {

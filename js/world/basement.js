@@ -182,7 +182,7 @@ export function buildBasement() {
     });
   }
   crate(3.6, 0, 8); crate(-3.8, 0, 7); crate(4.8, 0, -11);
-  crate(-5.4, 0, -11); crate(-30, -4, -15); crate(-44, -4, -24.6);
+  crate(-5.4, 0, -11); crate(-30, -4, -15); crate(-43.6, -4, -17.6);
   crate(-34.5, -4, -46); crate(-46, -4, -38);
 
   // серверные стойки
@@ -200,18 +200,17 @@ export function buildBasement() {
       led.position.set(x, 2.2 - k * 0.3, -19.58); scene.add(led);
     }
   }
-  // стеллажи архива
-  for (let i = 0; i < 4; i++) {
-    const z = -24 + i * 2.8;
-    const s = new THREE.Mesh(new THREE.BoxGeometry(9, 2.4, 0.7), MAT.crate);
-    s.position.set(-39, -2.8, z); scene.add(s);
+  // стеллажи архива (между ними проходы, по которым ходит охрана)
+  for (const z of [-24.5, -22, -19.5]) {
+    const s = new THREE.Mesh(new THREE.BoxGeometry(4.5, 2.4, 0.7), MAT.crate);
+    s.position.set(-42.5, -2.8, z); scene.add(s);
     colliders.push({
-      min: new THREE.Vector3(-43.5, -4, z - 0.35), max: new THREE.Vector3(-34.5, -1.6, z + 0.35),
-      cx: -39, cy: -2.8, cz: z, r: 5, occluder: true,
+      min: new THREE.Vector3(-44.75, -4, z - 0.35), max: new THREE.Vector3(-40.25, -1.6, z + 0.35),
+      cx: -42.5, cy: -2.8, cz: z, r: 2.8, occluder: true,
     });
   }
   // лабораторные столы
-  for (const [x, z] of [[-44, -45], [-36, -45], [-40, -39]]) {
+  for (const [x, z] of [[-44, -45], [-36, -45], [-43.5, -38]]) {
     const t = new THREE.Mesh(new THREE.BoxGeometry(3, 0.9, 1.4), MAT.metal);
     t.position.set(x, -3.55, z); scene.add(t);
     colliders.push({
@@ -229,11 +228,34 @@ export function buildBasement() {
     { pos: new THREE.Vector3(-45, -4, -43), name: 'ЧЕРТЕЖИ ПВО' },
   ];
 
+  // узлы для навигации ИИ (коридоры, комнаты, лестница)
+  out.navNodes = [
+    // холл и узкий проход
+    new THREE.Vector3(0, 0, 7), new THREE.Vector3(0, 0, 2),
+    new THREE.Vector3(0, 0, -3), new THREE.Vector3(0, 0, -7),
+    // серверная
+    new THREE.Vector3(0, 0, -13), new THREE.Vector3(-5, 0, -13.5), new THREE.Vector3(5, 0, -13.5),
+    new THREE.Vector3(-4, 0, -17), new THREE.Vector3(4, 0, -17), new THREE.Vector3(0, 0, -18.5),
+    // технический коридор и лестница вниз
+    new THREE.Vector3(-10, 0, -16), new THREE.Vector3(-14, 0, -16),
+    new THREE.Vector3(-18.9, -0.6, -17), new THREE.Vector3(-21.5, -2, -18), new THREE.Vector3(-24.4, -4, -18),
+    new THREE.Vector3(-28, -4, -18), new THREE.Vector3(-31.5, -4, -18),
+    // архив: два боковых прохода и открытая северная часть
+    new THREE.Vector3(-39, -4, -25.3), new THREE.Vector3(-37, -4, -23),
+    new THREE.Vector3(-37, -4, -20), new THREE.Vector3(-37, -4, -16.5),
+    new THREE.Vector3(-34.5, -4, -22), new THREE.Vector3(-34.5, -4, -17),
+    // проход к лаборатории
+    new THREE.Vector3(-39, -4, -30), new THREE.Vector3(-39, -4, -34), new THREE.Vector3(-39, -4, -38),
+    // лаборатория
+    new THREE.Vector3(-36.5, -4, -39), new THREE.Vector3(-45, -4, -42),
+    new THREE.Vector3(-40, -4, -45), new THREE.Vector3(-40, -4, -46.8), new THREE.Vector3(-44, -4, -46.8),
+  ];
+
   out.spawn = new THREE.Vector3(0, 0, 8);
   out.enemySpawns = [
     new THREE.Vector3(0, 0, -19), new THREE.Vector3(-4, 0, -14), new THREE.Vector3(4, 0, -19),
-    new THREE.Vector3(-12, 0, -16), new THREE.Vector3(-29, -4, -18), new THREE.Vector3(-41, -4, -20),
-    new THREE.Vector3(-37, -4, -16), new THREE.Vector3(-44, -4, -24), new THREE.Vector3(-40, -4, -44),
+    new THREE.Vector3(-12, 0, -16), new THREE.Vector3(-29, -4, -18), new THREE.Vector3(-36, -4, -21),
+    new THREE.Vector3(-36, -4, -17), new THREE.Vector3(-39.5, -4, -23), new THREE.Vector3(-40, -4, -44),
     new THREE.Vector3(-35, -4, -40), new THREE.Vector3(-45, -4, -40), new THREE.Vector3(0, 0, 3),
   ];
   out.exitPos = new THREE.Vector3(-44.5, -4, -46.5);
