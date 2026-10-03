@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>ТИХИЙ ШТОРМ — Epic Game</title>
+<link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+<div id="game">
+  <canvas id="canvas"></canvas>
+
+  <!-- ================= HUD ================= -->
+  <div id="hud" class="hidden">
+    <div id="crosshair">
+      <span class="ch ch-t"></span><span class="ch ch-r"></span><span class="ch ch-b"></span><span class="ch ch-l"></span>
+      <span class="ch-dot"></span>
+    </div>
+
+    <div id="hud-tl">
+      <div id="objective"></div>
+      <div id="wave-line"></div>
+      <div id="radio-ind"><span class="dot"></span><span id="radio-who">РАДИО</span></div>
+    </div>
+
+    <div id="hud-tr">
+      <div id="timer" class="hidden"></div>
+      <div id="stats"></div>
+    </div>
+
+    <div id="hud-bl">
+      <div id="hp-wrap">
+        <div id="hp-bar"><div id="hp-fill"></div></div>
+        <div id="hp-num">100</div>
+      </div>
+    </div>
+
+    <div id="hud-br">
+      <div id="ammo"><span id="ammo-mag">30</span><span class="slash">/</span><span id="ammo-res">240</span></div>
+      <div id="weapon-name">АК-74 «Вихрь»</div>
+    </div>
+
+    <div id="prompt"><kbd>E</kbd><span id="prompt-text"></span></div>
+    <div id="subtitle"></div>
+    <div id="banner"><div id="banner-main"></div><div id="banner-sub"></div></div>
+    <div id="damage-flash"></div>
+    <div id="hitmarker"></div>
+  </div>
+
+  <div id="letterbox-top" class="bar"></div>
+  <div id="letterbox-bot" class="bar"></div>
+  <div id="fade"></div>
+  <div id="chapter-title"><div id="ct-num"></div><div id="ct-name"></div></div>
+
+  <!-- ================= SCREENS ================= -->
+  <div id="start-screen" class="screen">
+    <div class="panel">
+      <div class="title">ТИХИЙ ШТОРМ</div>
+      <div class="subtitle-sm">оперативная зачистка · квадрат 7 · 3 главы</div>
+      <div class="brief">
+        <p><b>1.</b> Заставка: борт, приказ, десант с парашютом.</p>
+        <p><b>2.</b> Зачистка базы: 9 волн, центральное здание и аппаратура связи.</p>
+        <p><b>3.</b> 10-я волна — продержаться 2 минуты до эвакуации.</p>
+        <p><b>4.</b> Подвал: секретные данные и короткий последний рывок.</p>
+      </div>
+      <div class="controls">
+        <div><kbd>W A S D</kbd> движение</div>
+        <div><b>МЫШЬ</b> обзор · <kbd>ЛКМ</kbd> огонь</div>
+        <div><kbd>R</kbd> перезарядка · <kbd>SHIFT</kbd> бег</div>
+        <div><kbd>E</kbd> взаимодействие · <kbd>SPACE</kbd> прыжок</div>
+        <div><kbd>ESC</kbd> пауза · <kbd>F</kbd> голос вкл/выкл</div>
+      </div>
+      <button id="btn-start" class="btn">НАЧАТЬ ОПЕРАЦИЮ</button>
+      <div class="hint">нажми, чтобы захватить курсор</div>
+    </div>
+  </div>
+
+  <div id="pause-screen" class="screen hidden">
+    <div class="panel small">
+      <div class="title sm">ПАУЗА</div>
+      <button id="btn-resume" class="btn">ПРОДОЛЖИТЬ</button>
+      <button id="btn-restart" class="btn ghost">НАЧАТЬ ЗАНОВО</button>
+      <div class="hint">ESC — вернуться в бой</div>
+    </div>
+  </div>
+
+  <div id="end-screen" class="screen hidden">
+    <div class="panel">
+      <div class="title sm" id="end-title">ЭВАКУАЦИЯ ЗАВЕРШЕНА</div>
+      <div class="subtitle-sm" id="end-sub"></div>
+      <div class="stats-grid" id="end-stats"></div>
+      <button id="btn-again" class="btn">ЕЩЁ РАЗ</button>
+    </div>
+  </div>
+
+  <div id="lock-hint" class="hidden">КЛИКНИ, ЧТОБЫ ЗАХВАТИТЬ МЫШЬ</div>
+  <div id="skip-hint" class="hidden">ПРОБЕЛ / КЛИК — ПРОПУСТИТЬ</div>
+  <div id="voice-hint" class="hidden">F — голос вкл/выкл</div>
+</div>
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
