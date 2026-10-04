@@ -1,23 +1,30 @@
 {
   "name": "epic-game",
   "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
+  "private": true,
+  "description": "«Портальная станция 37-C» — карта Rick and Morty для Roblox Studio: один готовый RickAndMorty_Portals.rbxlx, собранный из JS-геометрии (tools/) и Lua-кода (src/).",
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "node tools/build.js",
+    "check": "npm run check:rig && npm run check:world && npm run check:portals && npm run check:path && npm run check:lua",
+    "check:rig": "node tools/check_rig.js",
+    "check:world": "node tools/check_world.js",
+    "check:portals": "node tools/check_portals.js",
+    "check:path": "node tools/check_path.js",
+    "check:lua": "node tools/check_lua_api.js",
+    "inspect": "node tools/inspect.js",
+    "render": "node tools/render_map.js",
+    "format": "stylua src/",
+    "format:check": "stylua --check src/"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/Artins200/Epic-game.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
   "bugs": {
     "url": "https://github.com/Artins200/Epic-game/issues"
   },
   "homepage": "https://github.com/Artins200/Epic-game#readme",
-  "dependencies": {
+  "devDependencies": {
     "@johnnymorganz/stylua-bin": "^2.5.2",
     "rbx-dom": "^0.3.0"
   }

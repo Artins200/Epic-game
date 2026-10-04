@@ -1,7 +1,9 @@
 /* Проверка порталов: нормаль (+X), точка выхода свободна и есть ли пол под ней. */
 const fs = require("fs");
+const path = require("path");
 const { readXml } = require("rbx-dom");
-const FILE = process.argv[2] || "/home/user/Epic-game/RickAndMorty_Portals.rbxlx";
+const ROOT = path.resolve(__dirname, "..");
+const FILE = process.argv[2] || path.join(ROOT, "RickAndMorty_Portals.rbxlx");
 const dom = readXml(fs.readFileSync(FILE), { propertyBehavior: "errorOnUnknown" });
 const snap = (r) => dom.instance(r);
 const unwrap = (v) => (v === null || typeof v !== "object" ? v : Object.keys(v).length === 1 ? unwrap(v[Object.keys(v)[0]]) : v);

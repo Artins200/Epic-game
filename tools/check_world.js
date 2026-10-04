@@ -1,8 +1,10 @@
 /* Геометрические проверки готового .rbxlx: есть ли пол под ключевыми точками,
    не висит ли что-то в воздухе, какие группы анимации попали в файл. */
 const fs = require("fs");
+const path = require("path");
 const { readXml } = require("rbx-dom");
-const FILE = process.argv[2] || "/home/user/Epic-game/RickAndMorty_Portals.rbxlx";
+const ROOT = path.resolve(__dirname, "..");
+const FILE = process.argv[2] || path.join(ROOT, "RickAndMorty_Portals.rbxlx");
 const dom = readXml(fs.readFileSync(FILE), { propertyBehavior: "errorOnUnknown" });
 const snap = (r) => dom.instance(r);
 const kids = (r) => dom.children(r);

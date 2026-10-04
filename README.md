@@ -51,34 +51,63 @@
 Файл `.rbxlx` генерируется скриптами на Node: `tools/` — геометрия, `src/` — Lua-код.
 
 ```bash
-npm install                                   # rbx-dom (сборка XML) + stylua (проверка Lua)
-node tools/build.js                           # → RickAndMorty_Portals.rbxlx
+npm install                                   # rbx-dom (сборка XML) + stylua (форматирование Lua)
+npm run build                                 # → RickAndMorty_Portals.rbxlx
+npm run check                                 # все проверки готового файла
 ```
 
 Скрипт сам проверяет корректность и делает round-trip:
 
 ```
 Сборка мира…
-  деталей в мире: 6068
+  деталей в мире: 6064
   имена классов и свойств проверены
 Генерация XML…
   записано: …/RickAndMorty_Portals.rbxlx 9.81 МБ
-Проверка: инстансов 9266 · повторная кодировка 9.81 МБ — OK
+Проверка: инстансов 9267 · повторная кодировка 9.81 МБ — OK
 Сервисы: Workspace, Lighting, ReplicatedStorage, ServerScriptService, StarterPlayer, …
 ```
 
 ## Проверки
 
-| Скрипт | Что проверяет |
+| Команда | Что проверяет |
 |---|---|
-| `node tools/build.js` | сборка + сверка всех классов и свойств с базой рефлексии Roblox |
-| `node tools/inspect.js` | разбор готового файла: классы, группы, порталы, скрипты, Tool |
-| `node tools/check_world.js` | пол под ключевыми точками, группы анимации, «висящая» геометрия |
-| `node tools/check_portals.js` | у каждого портала нормаль, точка выхода и пол под ней |
-| `node tools/check_path.js` | профиль маршрута: перепады высоты и обрывы |
-| `node tools/check_lua_api.js` | все `Enum.*.*` в Lua против базы Roblox |
-| `node tools/render_map.js` | оффлайн-рендер мира в PNG (карта и изометрия площади) |
-| `npx stylua --check src/` | синтаксис и форматирование Lua |
+| `npm run build` | сборка + сверка всех классов, свойств и правил родительства с базой рефлексии Roblox |
+| `npm run check:rig` | иерархия персонажей: `Animator` внутри `Humanoid`, суставы R6 внутри `Torso`, `PrimaryPart`, промпт и клик-детектор |
+| `npm run check:world` | пол под ключевыми точками, группы анимации, «висящая» геометрия |
+| `npm run check:portals` | у каждого портала нормаль, точка выхода и пол под ней |
+| `npm run check:path` | профиль маршрута: перепады высоты и обрывы |
+| `npm run check:lua` | все `Enum.*.*` в Lua против базы Roblox |
+| `npm run inspect` | разбор готового файла: классы, группы, порталы, скрипты, Tool |
+| `npm run render` | оффлайн-рендер мира в PNG (карта и изометрия площади), в git не хранится |
+| `npm run format` | привести Lua к единому стилю (stylua) |
+
+## Устройство ригов NPC (важно)
+
+Риги собраны по канону Roblox R6 — иначе Studio либо не откроет место, либо NPC
+останутся неподвижными куклами:
+
+```
+NPC_RickPrime (Model, PrimaryPart = HumanoidRootPart)
+├── HumanoidRootPart, Torso, Head, Right/Left Arm, Right/Left Leg
+│   └── Torso: RootJoint, Neck, Right/Left Shoulder, Right/Left Hip (Motor6D)
+├── Humanoid
+│   └── Animator          ← обязательно ВНУТРИ Humanoid
+├── RigConfig, ProximityPrompt, ClickDetector, Nameplate, Highlight
+```
+
+- **`Animator` — только внутри `Humanoid`** (или `AnimationController`). Если положить его
+  рядом с `Humanoid`, Studio не открывает место:
+  `Animator has to be placed under Humanoid or AnimationController!`
+- **`Motor6D` — внутри `Torso`.** Именно там их ищет `RigAnim.lua`
+  (`torso:FindFirstChild("RootJoint")`); из самой модели он их не увидит, `RigAnim.new()`
+  вернёт `nil` — и NPC перестанут дышать, ходить, говорить и реагировать на клик/`E`.
+- **Свет — внутри детали.** `PointLight` как ребёнок `Model` не светит.
+- **`Highlight` без `Adornee`** подсвечивает родителя-модель целиком; `Adornee` на
+  невидимый `HumanoidRootPart` дал бы просто светящуюся коробку.
+
+Оба правила (`Animator`, `Humanoid`) на этапе сборки проверяет `tools/build.js`, а готовый
+файл — `tools/check_rig.js`.
 
 ## Структура
 
@@ -92,10 +121,11 @@ src/
   client/  WorldClient.client.lua  HUD, камера, реплики, анимация мира
   tool/    PortalGun.client.lua    стрельба из портальной пушки
 tools/
-  lib/      cframe, kit, shapes, characters   примитивы и персонажи
-  world/    plaza, wasteland, alien, citadel, garage, sky, heroes, lighting
-  build.js  сборщик .rbxlx
-preview_map.png, preview_plaza.png            оффлайн-рендеры мира
+  lib/       cframe, kit, shapes, characters   примитивы и персонажи
+  world/     plaza, wasteland, alien, citadel, garage, sky, heroes, lighting, portals, groups
+  build.js   сборщик .rbxlx
+  check_*.js проверки готового файла (риг, мир, порталы, маршрут, Lua-API)
+  inspect.js, render_map.js   разбор файла и оффлайн-превью (PNG генерируются по запросу)
 ```
 
 ## Цвета порталов

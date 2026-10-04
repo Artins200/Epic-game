@@ -255,8 +255,12 @@ function rig(o) {
     return { model: K.model({ name: o.modelName || o.name, primary: hrp.referent, children: fixed.concat(rigid) }), refs: { hrp: hrp.referent, head: head.referent }, gun, base, scale: s };
   }
 
-  // --- сборка модели: все детали (тело, лицо, одежда, пушка) + суставы + сварки
-  const children = [...parts, ...joints];
+  // --- сборка модели: все детали (тело, лицо, одежда, пушка) + сварки.
+  // Суставы R6 кладём ВНУТРЬ Torso — так устроен канонический риг Roblox и именно там
+  // их ищет RigAnim (torso:FindFirstChild("RootJoint") …). Если оставить Motor6D
+  // прямыми детьми Model, процедурная анимация, реплики и клики NPC не заработают.
+  torso.children.push(...joints);
+  const children = [...parts];
   const welds = [];
   for (const p of parts) {
     if (p._parent) welds.push(weldC(p._parent, p.referent));
@@ -267,6 +271,9 @@ function rig(o) {
   children.push(...welds, ...gunWelds);
 
   // --- гуманоид + служебные объекты
+  // ВАЖНО: Animator обязан лежать ВНУТРИ Humanoid (или AnimationController).
+  // Если положить его рядом с Humanoid (прямо в Model), Roblox Studio не открывает место:
+  // «Animator has to be placed under Humanoid or AnimationController!»
   children.push({
     className: "Humanoid",
     name: "Humanoid",
@@ -276,8 +283,8 @@ function rig(o) {
       HipHeight: 0, AutoRotate: false, BreakJointsOnDeath: false, RequiresNeck: false,
       EvaluateStateMachine: false, DisplayName: o.displayName || o.name,
     },
+    children: [{ className: "Animator", name: "Animator" }],
   });
-  children.push({ className: "Animator", name: "Animator" });
   children.push({ className: "Configuration", name: "RigConfig", children: [
     K.stringValue("Kind", o.kind || "rick"),
     K.numberValue("Scale", s),
@@ -308,8 +315,11 @@ function rig(o) {
   plate.properties.Adornee = K.REF(head.referent);
   children.push(plate);
 
-  if (o.highlight) children.push(K.highlight({ color: o.highlight, outline: o.highlight, fillTransparency: 0.72, outlineTransparency: 0.15, depthMode: 1, adornee: hrp.referent }));
-  if (o.light) children.push(Object.assign(pointLight({ color: o.light, range: 22, brightness: 1.4 }), {}));
+  // Подсветка: без Adornee Highlight берёт родителя (Model) и обводит весь силуэт.
+  // Adornee = HumanoidRootPart давал бы светящийся прямоугольник вокруг невидимой детали.
+  if (o.highlight) children.push(K.highlight({ color: o.highlight, outline: o.highlight, fillTransparency: 0.72, outlineTransparency: 0.15, depthMode: 1 }));
+  // Свет в Roblox работает только внутри BasePart: PointLight как ребёнок Model не светит.
+  if (o.light) torso.children.push(pointLight({ color: o.light, range: 22, brightness: 1.4 }));
 
   const modelSpec = K.model({ name: o.modelName || o.name, primary: hrp.referent, children });
   return { model: modelSpec, refs: { hrp: hrp.referent, torso: torso.referent, head: head.referent, rarm: rarm.referent, larm: larm.referent, rleg: rleg.referent, lleg: lleg.referent }, gun, base, scale: s };
