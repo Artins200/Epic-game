@@ -1,7 +1,9 @@
 /* Быстрый разбор готового .rbxlx: что внутри и как оно связано. */
 const fs = require("fs");
+const nodePath = require("path");
 const { readXml } = require("rbx-dom");
-const FILE = process.argv[2] || "/home/user/Epic-game/RickAndMorty_Portals.rbxlx";
+const ROOT = nodePath.resolve(__dirname, "..");
+const FILE = process.argv[2] || nodePath.join(ROOT, "RickAndMorty_Portals.rbxlx");
 
 const dom = readXml(fs.readFileSync(FILE), { propertyBehavior: "errorOnUnknown" });
 const root = dom.rootRef;

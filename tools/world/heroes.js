@@ -75,6 +75,7 @@ function build() {
     name: "RickPrime", modelName: "NPC_RickPrime", scale: 1.04,
     displayName: CH.HEROES.rickprime.displayName, subtitle: CH.HEROES.rickprime.subtitle, nameColor: CH.HEROES.rickprime.nameColor, subColor: CH.HEROES.rickprime.subColor,
     kind: "rickprime", palette: CH.HEROES.rickprime.palette, gun: CH.HEROES.rickprime.gun, highlight: CH.HEROES.rickprime.highlight,
+    light: CH.HEROES.rickprime.light,
   });
   out.push(K.model({ name: "Heroes_RickPrime", children: stage.concat([rickPrime.model]) }));
 

@@ -59,6 +59,10 @@ function RigAnim.new(model: Model)
 	-- суставы в порядке родитель → ребёнок
 	for _, info in ipairs(JOINTS) do
 		local joint = torso:FindFirstChild(info.joint)
+		if not joint then
+			-- запасной вариант: риг мог положить Motor6D не в Torso, а в саму модель
+			joint = model:FindFirstChild(info.joint, true)
+		end
 		if joint and joint:IsA("Motor6D") and isPart(joint.Part0) and isPart(joint.Part1) then
 			table.insert(self.joints, {
 				key = info.key,

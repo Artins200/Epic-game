@@ -167,8 +167,24 @@ function main() {
       cache.set(cls, set);
       return set;
     };
+    // Классы, которые Roblox Studio разрешает держать только под определённым родителем.
+    // Нарушение = место не откроется: «Animator has to be placed under Humanoid or AnimationController!»
+    const isA = (cls, base) => {
+      let c = reflection.class(cls);
+      let guard = 0;
+      while (c && guard++ < 20) {
+        if (c.Name === base) return true;
+        c = c.Superclass && c.Superclass !== "" ? reflection.class(c.Superclass) : null;
+      }
+      return false;
+    };
+    const PARENT_RULES = {
+      Animator: ["Humanoid", "AnimationController"],
+      Humanoid: ["Model"],
+    };
+
     const problems = [];
-    const walk = (node, path) => {
+    const walk = (node, path, parentClass) => {
       const cls = node.className;
       if (!reflection.class(cls)) problems.push("неизвестный класс: " + cls + " (" + path + ")");
       const set = allowed(cls);
@@ -178,9 +194,13 @@ function main() {
         if (set.has(norm)) continue;
         problems.push("свойство " + cls + "." + key + " (" + path + ")");
       }
-      for (const c of node.children || []) walk(c, path + "/" + (c.name || c.className));
+      const rule = PARENT_RULES[cls];
+      if (rule && parentClass && !rule.some((r) => isA(parentClass, r))) {
+        problems.push(cls + " должен лежать под " + rule.join("/") + ", а не под " + parentClass + " (" + path + ")");
+      }
+      for (const c of node.children || []) walk(c, path + "/" + (c.name || c.className), cls);
     };
-    walk(root, "root");
+    walk(root, "root", null);
     return problems;
   }
   const problems = validateSpec(root);
@@ -204,6 +224,38 @@ function main() {
   console.log("Проверка: инстансов", back.instanceCount, "· повторная кодировка", (re.length / 1024 / 1024).toFixed(2), "МБ — OK");
   const names = back.children(back.rootRef).map((r) => back.instance(r).name);
   console.log("Сервисы:", names.join(", "));
+
+  // ------------------------------------------------------------------ ссылки между инстансами
+  // Ссылка обязана уезжать в XML тегом <Ref>. Если передать rbx-dom голую строку,
+  // получится <string name="PrimaryPart">…</string>, Studio прочитает её как nil —
+  // и PrimaryPart, Motor6D.Part0/Part1, сварки, Adornee и Beam.Attachment* будут пустыми.
+  const xmlText = Buffer.isBuffer(xml) ? xml.toString("utf8") : String(xml);
+  const fakeRefs = xmlText.match(/<string name="(PrimaryPart|Part0|Part1|Part0Internal|Part1Internal|Adornee|Attachment0|Attachment1)">/g) || [];
+  if (fakeRefs.length) {
+    console.log("  ПРОБЛЕМЫ: ссылок, записанных как <string> вместо <Ref>:", fakeRefs.length);
+    for (const f of fakeRefs.slice(0, 10)) console.log("   -", f);
+    process.exit(1);
+  }
+  let refCount = 0;
+  const brokenRefs = [];
+  const walkRefs = (r) => {
+    const props = back.instance(r).properties;
+    for (const [key, v] of Object.entries(props)) {
+      if (!v || typeof v !== "object" || v.Ref === undefined) continue;
+      refCount++;
+      let target = null;
+      try { target = back.instance(v.Ref); } catch (e) { target = null; }
+      if (!target) brokenRefs.push(back.instance(r).className + "." + key + " → " + back.fullPath(r));
+    }
+    for (const c of back.children(r)) walkRefs(c);
+  };
+  walkRefs(back.rootRef);
+  if (brokenRefs.length) {
+    console.log("  ПРОБЛЕМЫ: битых ссылок", brokenRefs.length);
+    for (const b of brokenRefs.slice(0, 10)) console.log("   -", b);
+    process.exit(1);
+  }
+  console.log("Ссылки: <Ref> в файле", (xmlText.match(/<Ref /g) || []).length, "· разрешается", refCount, "· битых 0 — OK");
 }
 
 main();

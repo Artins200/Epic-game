@@ -157,7 +157,16 @@ const CS = (pts) =>
 const UD = (s, o = 0) => types.udim(s, o);
 const UD2 = (xs, xo, ys, yo) => types.taggedVariant("UDim2", types.udim2(UD(xs, xo), UD(ys, yo)));
 const URI = (u) => types.taggedVariant("Content", types.contentUri(u));
-const REF = (r) => types.refFromString(String(r));
+// Ссылка на инстанс. ОБЯЗАТЕЛЬНО taggedVariant("Ref", …): голая строка
+// (types.refFromString) уходит в XML как <string name="PrimaryPart">, и Roblox Studio
+// читает такую ссылку как nil — PrimaryPart, Motor6D.Part0/Part1, WeldConstraint,
+// Adornee, Beam.Attachment* и ObjectValue.Value остаются пустыми.
+const REF = (r) => {
+  // Принимаем и «сырой» referent, и уже собранный Ref-вариант — иначе нельзя
+  // переиспользовать Part0/Part1 из готового spec'а (например, в режиме «статуя»).
+  const id = r !== null && typeof r === "object" && r.Ref !== undefined ? r.Ref : String(r);
+  return types.taggedVariant("Ref", types.refFromString(id));
+};
 
 module.exports = {
   R,

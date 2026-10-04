@@ -1,10 +1,12 @@
 /* Быстрый превью-рендер мира из .rbxlx: вид сверху (карта) и изометрия площади.
    Никаких внешних зависимостей — только zlib из Node для PNG. */
 const fs = require("fs");
+const path = require("path");
 const zlib = require("zlib");
 const { readXml } = require("rbx-dom");
 
-const FILE = process.argv[2] || "/home/user/Epic-game/RickAndMorty_Portals.rbxlx";
+const ROOT = path.resolve(__dirname, "..");
+const FILE = process.argv[2] || path.join(ROOT, "RickAndMorty_Portals.rbxlx");
 const dom = readXml(fs.readFileSync(FILE), { propertyBehavior: "errorOnUnknown" });
 const snap = (r) => dom.instance(r);
 const unwrap = (v) => (v === null || typeof v !== "object" ? v : Object.keys(v).length === 1 ? unwrap(v[Object.keys(v)[0]]) : v);
@@ -143,5 +145,5 @@ function render(mode, W, H, span, out, bg) {
 }
 
 console.log("Деталей для рендера:", parts.length);
-render("top", 1100, 1100, 2000, "/home/user/Epic-game/preview_map.png", [10, 12, 20]);
-render("iso", 1400, 900, 230, "/home/user/Epic-game/preview_plaza.png", [12, 14, 24]);
+render("top", 1100, 1100, 2000, path.join(ROOT, "preview_map.png"), [10, 12, 20]);
+render("iso", 1400, 900, 230, path.join(ROOT, "preview_plaza.png"), [12, 14, 24]);
