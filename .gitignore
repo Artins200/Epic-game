@@ -1,8 +1,0 @@
-node_modules/
-npm-debug.log*
-*.log
-.DS_Store
-
-# генерируется командой `npm run render` (tools/render_map.js)
-preview_map.png
-preview_plaza.png
