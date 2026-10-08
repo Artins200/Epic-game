@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="mobile-web-app-capable" content="yes">
+<title>Liminal VR</title>
+<link rel="stylesheet" href="style.css">
+<!-- MediaPipe Hands (распознавание рук по задней камере) -->
+<script src="vendor/mediapipe/hands/hands.js"></script>
+<script type="importmap">{ "imports": { "three": "./vendor/three/three.module.js" } }</script>
+</head>
+<body>
+  <!-- Камера работает, но её картинка не выводится на экран -->
+  <video id="cam" playsinline muted autoplay></video>
+
+  <div id="hud"></div>
+  <template id="hud-tpl">
+    <div class="eye">
+      <div class="reticle" data-hud="reticle"></div>
+      <div class="dmg" data-hud="dmg"></div>
+      <div class="hp"><div class="hp-fill" data-hud="hpfill"></div></div>
+      <div class="top-left">
+        <div class="kills" data-hud="kills"></div>
+        <div class="status" data-hud="status"></div>
+      </div>
+      <div class="tool">
+        <div data-hud="tool"></div>
+        <small data-hud="toolhint"></small>
+      </div>
+      <div class="msg" data-hud="msg"></div>
+    </div>
+  </template>
+
+  <div id="start">
+    <h1>LIMINAL</h1>
+    <p class="sub">бесконечная белая клетчатая комната</p>
+    <ul class="help">
+      <li><b>Рука перед камерой</b> — ваша рука отображается в виртуальном мире и повторяет движения пальцев</li>
+      <li><b>Щипок пальцев</b> (ведущая рука) — действие инструмента, удерживать — непрерывно</li>
+      <li><b>Щипок другой рукой</b> — сменить инструмент</li>
+      <li><b>Тап по экрану</b> — то же, что щипок · <b>двойной тап</b> — сменить инструмент</li>
+      <li><b>Геймпад</b>: A — действие, B — сменить, левый стик — ходьба, правый — поворот</li>
+      <li><b>Клавиатура</b>: WASD, ЛКМ, Q/E или 1–5, ПКМ — осмотр</li>
+    </ul>
+    <p class="go">Тап, чтобы войти</p>
+  </div>
+
+  <script type="module" src="app.js"></script>
+</body>
+</html>

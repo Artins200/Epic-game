@@ -1,0 +1,6 @@
+# сгенерированное и сторонние зависимости (ставятся tools/setup_toolchain.py)
+web/vendor/
+build/
+dist/
+__pycache__/
+node_modules/
