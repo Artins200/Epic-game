@@ -28,7 +28,7 @@ ATTR_IDS = [
     ("targetSdkVersion", 0x01010270),
     ("name", 0x01010003),
     ("label", 0x01010001),
-    ("hardwareAccelerated", 0x010102D0),
+    ("hardwareAccelerated", 0x010102D3),
     ("exported", 0x01010010),
     ("screenOrientation", 0x0101001E),
     ("configChanges", 0x0101001F),
